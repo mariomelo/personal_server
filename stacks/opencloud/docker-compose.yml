@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  opencloud:
+    image: opencloudeu/opencloud:latest
+    container_name: opencloud
+    restart: unless-stopped
+
+    # Bind apenas no localhost
+    ports:
+      - "127.0.0.1:9200:9200"
+
+    # Limites de recursos
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 200M
+
+    # Variáveis de ambiente
+    environment:
+      - OCIS_URL=https://${OCIS_DOMAIN}
+      - OCIS_INSECURE=false
+      - OCIS_LOG_LEVEL=info
+      - OCIS_LOG_PRETTY=false
+      - PROXY_HTTP_ADDR=0.0.0.0:9200
+      - OCIS_ADMIN_PASSWORD=${OCIS_ADMIN_PASSWORD}
+      - TZ=${TZ}
+
+    # Volume para dados persistentes
+    volumes:
+      - ./data:/var/lib/ocis
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/status.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

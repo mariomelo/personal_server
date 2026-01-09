@@ -1,0 +1,15 @@
+# Secrets
+.env
+*.env.local
+secrets/
+
+# Dados
+*/data/
+*/books/
+*/uploads/
+
+# Logs
+*.log
+
+# Backups
+backups/
