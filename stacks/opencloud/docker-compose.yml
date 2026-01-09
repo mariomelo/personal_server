@@ -25,7 +25,16 @@ services:
       - OCIS_LOG_LEVEL=info
       - OCIS_LOG_PRETTY=false
       - PROXY_HTTP_ADDR=0.0.0.0:9200
+
+      # Admin
       - OCIS_ADMIN_PASSWORD=${OCIS_ADMIN_PASSWORD}
+
+      # Secrets (obrigatórios)
+      - OCIS_JWT_SECRET=${OCIS_JWT_SECRET}
+      - OCIS_TRANSFER_SECRET=${OCIS_TRANSFER_SECRET}
+      - OCIS_MACHINE_AUTH_API_KEY=${OCIS_MACHINE_AUTH_API_KEY}
+
+      # Timezone
       - TZ=${TZ}
 
     # Volume para dados persistentes
