@@ -5,6 +5,8 @@ secrets/
 
 # Dados
 */data/
+*/opencloud-data/
+*/opencloud-config/
 */books/
 */uploads/
 
