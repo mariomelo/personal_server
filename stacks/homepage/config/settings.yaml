@@ -1,0 +1,20 @@
+---
+title: Servidor Melomario
+background: https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920
+theme: dark
+color: slate
+
+layout:
+  - Aplicações:
+      style: row
+      columns: 3
+  - Analytics & Monitoring:
+      style: row
+      columns: 3
+  - Infraestrutura:
+      style: row
+      columns: 3
+
+providers:
+  docker:
+    socket: /var/run/docker.sock

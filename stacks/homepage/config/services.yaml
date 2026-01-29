@@ -1,0 +1,30 @@
+---
+# Exemplo de configuração - ajuste conforme seus serviços
+
+- Aplicações:
+    - Zeroslides:
+        icon: mdi-presentation
+        href: https://slides.seudominio.com
+        description: Apresentações em Elixir
+
+    - Site Estático:
+        icon: mdi-web
+        href: https://seudominio.com
+        description: Site principal
+
+- Analytics & Monitoring:
+    - Plausible:
+        icon: plausible
+        href: https://analytics.seudominio.com
+        description: Web analytics
+        container: plausible
+        widget:
+          type: plausible
+          url: https://analytics.seudominio.com
+          key: {{HOMEPAGE_VAR_PLAUSIBLE_TOKEN}}
+
+- Infraestrutura:
+    - Postgres Compartilhado:
+        icon: postgresql
+        description: Banco de dados compartilhado
+        container: shared-postgres

@@ -1,174 +1,155 @@
 # Infraestrutura Servidor Melomario
 
-Repositório centralizado para gerenciamento de toda a infraestrutura self-hosted via Infrastructure as Code.
+Repositório de configuração do servidor self-hosted com abordagem Infrastructure as Code.
 
-## Servidor
+**Servidor**: 51.15.177.139 (Scaleway)
+**OS**: Ubuntu 20.04 LTS
+**RAM**: 4GB
 
-- **IP**: 51.15.177.139 (Scaleway)
-- **Hostname**: melomario
-- **OS**: Ubuntu 20.04 LTS
-- **RAM**: 4GB (upgrade para 8GB planejado)
+## 🎯 Filosofia
 
-## Princípios
+- **Git como fonte da verdade**: Toda configuração versionada
+- **Scripts de replicação**: Servidor pode ser recriado rapidamente
+- **Simplicidade**: Sem over-engineering
+- **Backup-first**: Estratégia clara para cada serviço
 
-1. **Git como fonte de verdade**: Toda configuração versionada
-2. **Simplicidade**: Sem over-engineering
-3. **Segurança em camadas**: Firewall → HTTPS → 2FA (futuro) → Yubikey
-4. **Backup-first**: Toda aplicação tem estratégia de backup definida
-5. **Documentação viva**: READMEs sempre atualizados
+## 📦 Serviços
 
-## Estrutura
+### Rodando
+- **Zeroslides** (Elixir): Aplicação de apresentações via systemd
+- **Site Estático**: Servido diretamente pelo Caddy
 
-```
-.
-├── stacks/              # Docker Compose stacks
-│   ├── opencloud/      # OpenCloud (file sync)
-│   ├── immich/         # Immich (fotos) - futuro
-│   ├── booklore/       # Booklore (ebooks) - futuro
-│   └── authelia/       # Authelia (SSO + 2FA) - futuro
-├── scripts/            # Scripts de automação
-│   └── backup-opencloud.sh - futuro
-└── docs/               # Documentação adicional
-    └── SETUP.md
-```
+### Docker Stacks
+- **Postgres Compartilhado**: Banco de dados para múltiplos serviços
+- **Plausible Analytics**: Web analytics open-source
+- **Homepage**: Dashboard com status e métricas do servidor
 
-## Aplicações
+## 🚀 Setup Inicial
 
-### OpenCloud (Atual)
-
-File sync self-hosted baseado em ownCloud Infinite Scale (OCIS).
-
-- **Stack**: `stacks/opencloud/`
-- **Porta**: 9200 (localhost only)
-- **RAM**: ~200-300MB
-- **Backup**: Snapshot do diretório `data/`
-
-**Primeira instalação**:
+### 1. No servidor
 
 ```bash
-cd ~/infra-servidor/stacks/opencloud
+# Clonar repositório
+git clone <seu-repo> ~/infra-servidor
+cd ~/infra-servidor
 
-# 1. Configurar variáveis
-cp .env.example .env
-nano .env  # Editar OCIS_DOMAIN e OCIS_ADMIN_PASSWORD
+# Setup inicial (Docker, Caddy, firewall)
+chmod +x scripts/*.sh
+./scripts/setup-server.sh
 
-# 2. Subir container
+# Se instalou Docker agora, fazer logout/login para aplicar grupo
+```
+
+### 2. Configurar variáveis
+
+```bash
+# Postgres compartilhado
+cp stacks/shared/postgres/.env.example stacks/shared/postgres/.env
+# Editar: vim stacks/shared/postgres/.env
+
+# Plausible
+cp stacks/plausible/.env.example stacks/plausible/.env
+# Gerar secrets:
+openssl rand -base64 64 | tr -d '\n'  # SECRET_KEY_BASE
+openssl rand -base64 32 | tr -d '\n'  # TOTP_VAULT_KEY
+# Editar: vim stacks/plausible/.env
+```
+
+### 3. Configurar Caddy
+
+```bash
+# Editar caddy/Caddyfile com seus domínios reais
+vim caddy/Caddyfile
+
+# Aplicar configuração
+./scripts/setup-caddy.sh
+```
+
+### 4. Subir serviços
+
+```bash
+# Postgres primeiro (outros dependem dele)
+cd stacks/shared/postgres
 docker compose up -d
+docker compose logs -f  # Verificar se está healthy
 
-# 3. Verificar logs
+# Plausible
+cd ../../plausible
+docker compose up -d
 docker compose logs -f
 
-# 4. Verificar saúde
-docker compose ps
-curl -I http://localhost:9200
+# Homepage
+cd ../homepage
+docker compose up -d
 ```
 
-**Caddy reverse proxy** (configurar em `/etc/caddy/Caddyfile`):
+### 5. Primeiro acesso
 
-```caddy
-cloud.melomario.com {
-    reverse_proxy localhost:9200
+- **Plausible**: https://analytics.seudominio.com - Criar conta admin
+- **Homepage**: https://dash.seudominio.com - Já funcionando
 
-    # Headers de segurança
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
-
-    # Logs
-    log {
-        output file /var/log/caddy/opencloud.log
-        format json
-    }
-}
-```
-
-Depois de editar: `sudo systemctl reload caddy`
-
-### Zeroslides (Existente)
-
-Aplicação Elixir/Phoenix para apresentações.
-
-- **Localização**: `~/apps/zeroslides/` (será migrado para `stacks/`)
-- **Deploy**: GitHub Actions via SSH
-- **Porta**: 4000 (localhost only)
-
-## Comandos Úteis
-
-### OpenCloud
+## 🔧 Scripts Úteis
 
 ```bash
-# Ver logs
-cd ~/infra-servidor/stacks/opencloud && docker compose logs -f
+# Limpar todos containers Docker
+./scripts/cleanup-docker.sh
 
-# Restart
-docker compose restart
+# Deploy de um stack específico
+./scripts/deploy-stack.sh plausible
 
-# Parar
-docker compose down
-
-# Update
-docker compose pull && docker compose up -d
-```
-
-### Caddy
-
-```bash
-# Status
-sudo systemctl status caddy
-
-# Reload configuração
+# Recarregar Caddy
 sudo systemctl reload caddy
 
-# Validar Caddyfile
-sudo caddy validate --config /etc/caddy/Caddyfile
-
-# Ver logs
+# Ver logs do Caddy
 sudo journalctl -u caddy -f
 ```
 
-### Docker
+## 📊 Estrutura
 
-```bash
-# Ver containers rodando
-docker ps
-
-# Ver uso de recursos
-docker stats
-
-# Limpar recursos não usados
-docker system prune -a
+```
+~/infra-servidor/
+├── scripts/           # Scripts de setup e deploy
+├── stacks/            # Docker Compose de cada serviço
+│   ├── shared/        # Serviços compartilhados (Postgres)
+│   ├── plausible/     # Analytics
+│   └── homepage/      # Dashboard
+├── caddy/             # Configuração do Caddy (symlinked)
+└── CLAUDE.md          # Contexto detalhado para Claude Code
 ```
 
-## Roadmap
+## 🔐 Segurança
 
-- [x] Estrutura Git inicial
-- [x] OpenCloud configurado
-- [ ] Documentação em `docs/SETUP.md`
-- [ ] Script de backup do OpenCloud
-- [ ] Migrar Zeroslides para estrutura Git
-- [ ] Adicionar Immich (fotos)
-- [ ] Adicionar Booklore (ebooks)
-- [ ] Upgrade RAM para 8GB
-- [ ] Implementar Authelia + Yubikey
+- UFW configurado (SSH, HTTP, HTTPS)
+- Containers só acessíveis via localhost (127.0.0.1)
+- Caddy gerencia SSL automaticamente
+- Fail2ban protege SSH
 
-## Segurança
+## 📝 Backup
 
-### Dados Sensíveis
+### Postgres
+```bash
+# Backup manual
+docker exec shared-postgres pg_dumpall -U postgres > backup.sql
 
-- **NUNCA** commitar arquivos `.env`
-- **SEMPRE** usar `.env.example` com placeholders
-- Verificar `.gitignore` antes de cada commit
-- Permissões dos `.env`: `chmod 600 stacks/*/.env`
+# Restaurar
+cat backup.sql | docker exec -i shared-postgres psql -U postgres
+```
 
-### Backups Críticos
+### Plausible (ClickHouse)
+```bash
+# Eventos estão em volume Docker
+docker volume inspect plausible-event-data
+```
 
-- OpenCloud: `~/infra-servidor/stacks/opencloud/data/`
-- Immich (futuro): `~/infra-servidor/stacks/immich/{uploads,database}/`
-- Booklore (futuro): `~/infra-servidor/stacks/booklore/{books,data,mariadb}/`
+## 🎓 Recursos
 
-## Suporte
+- [Plausible Docs](https://plausible.io/docs)
+- [Homepage Docs](https://gethomepage.dev)
+- [Caddy Docs](https://caddyserver.com/docs/)
 
-Ver documentação completa em `CLAUDE.md` e `docs/`.
+## 📌 TODO
+
+- [ ] Script de backup automatizado
+- [ ] Cron job para backups diários
+- [ ] Monitoramento de uptime
+- [ ] Alertas via webhook

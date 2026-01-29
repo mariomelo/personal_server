@@ -1,482 +1,326 @@
 # Infraestrutura Servidor Melomario - Context File
 
-**Servidor**: 51.15.177.139 (Scaleway)  
-**Hostname**: melomario  
-**OS**: Ubuntu 20.04 LTS  
-**RAM Atual**: 4GB  
-**RAM Planejada**: 8GB (upgrade futuro)
+**Última atualização**: 2026-01-29
+**Servidor**: 51.15.177.139 (Scaleway)
+**Hostname**: melomario
+**OS**: Ubuntu 20.04 LTS
+**RAM**: 4GB
 
 ---
 
 ## 🎯 Objetivo do Projeto
 
-Criar uma infraestrutura self-hosted completa, organizada via Git, com deployment automatizado via GitHub Actions. Transição de gerenciamento via Portainer para abordagem Infrastructure as Code.
+Infraestrutura self-hosted gerenciada via Git, com scripts de replicação rápida e deployment automatizado.
 
-### Princípios de Design
+### Princípios
 
 1. **Git como fonte de verdade**: Toda configuração versionada
-2. **Simplicidade**: Sem over-engineering
-3. **Segurança em camadas**: Firewall → HTTPS → 2FA (futuro) → Yubikey
-4. **Backup-first**: Toda aplicação tem estratégia de backup definida
-5. **Documentação viva**: READMEs sempre atualizados
+2. **Scripts de replicação**: Servidor recriável em minutos
+3. **Simplicidade**: KISS principle
+4. **Segurança em camadas**: Firewall → HTTPS → Headers
+5. **Backup-first**: Estratégia clara para cada serviço
 
 ---
 
 ## 📊 Estado Atual
 
-### Aplicações Rodando
-- ✅ **Zeroslides** (Elixir/Phoenix): Deploy via GitHub Actions
-  - Localização: `~/apps/zeroslides/`
-  - Systemd: `zero-slides.service`
-  - Deploy: SSH + tar.gz extraction
-- ✅ **Portainer**: Gerenciamento Docker (será removido)
+### Aplicações Fora do Docker
+- ✅ **Zeroslides** (Elixir/Phoenix): Rodando via systemd em `~/apps/zeroslides/`
+- ✅ **Site Estático**: Servido diretamente pelo Caddy
+
+### Docker Stacks
+- ✅ **Postgres Compartilhado**: `stacks/shared/postgres/`
+- ✅ **Plausible Analytics**: `stacks/plausible/`
+- ✅ **Homepage Dashboard**: `stacks/homepage/`
 
 ### Infraestrutura
-- ✅ Docker + Docker Compose instalados
-- ✅ GitHub Actions configurado para Zeroslides
-- ⚠️ Caddy NÃO instalado ainda
-- ⚠️ Estrutura Git NÃO criada ainda
+- ✅ Caddy instalado no host (não em container)
+- ✅ Docker + Docker Compose
+- ✅ UFW + Fail2ban configurados
 
 ---
 
-## 🚀 Tarefa Imediata: Instalar OpenCloud
-
-### Contexto
-OpenCloud é um fork recente (2025) do ownCloud Infinite Scale (OCIS), escrito em Go. É extremamente leve (~200MB RAM) e não precisa de banco de dados, usando "File Native Backup" (backup via simples snapshot de arquivos).
+## 🏗️ Arquitetura
 
 ### Decisões Arquiteturais
 
-**Por que OpenCloud?**
-- ✅ Mais leve que Nextcloud/Seafile
-- ✅ Sem overhead de banco de dados
-- ✅ Backup trivial (tar.gz do diretório)
-- ✅ Escrito em Go (mais eficiente que PHP)
-- ✅ Suporta WebDAV, OPDS, sincronização
+**Por que Caddy no host?**
+- Um único ponto de configuração (Caddyfile)
+- SSL automático para todos os domínios
+- Reload sem downtime
+- Menor overhead que containers separados
 
-**Por que Caddy no host (não container)?**
-- ✅ Um único ponto de configuração (Caddyfile)
-- ✅ SSL automático para todos os domínios
-- ✅ Reload sem downtime
-- ✅ Menor overhead que containers separados
-- ✅ Logs centralizados
+**Por que Postgres compartilhado?**
+- Reduz uso de memória (4GB é limitado)
+- Um ponto de backup
+- Fácil adicionar novos bancos (via SQL script)
+- Plausible + futuras apps Elixir usam o mesmo
 
-**Estrutura de Diretórios**
+**Por que Homepage?**
+- Dashboard leve (256MB RAM)
+- Mostra status dos containers
+- Mostra métricas do servidor (CPU/RAM/disco)
+- Integração com Docker nativa
+
+---
+
+## 📁 Estrutura de Diretórios
+
 ```
-~/infra-servidor/               # Repositório Git
+~/infra-servidor/
 ├── .gitignore
-├── README.md
-├── stacks/
-│   ├── opencloud/
-│   │   ├── docker-compose.yml
-│   │   ├── .env              # Não versionado
-│   │   ├── .env.example      # Versionado
-│   │   └── data/             # Volume, não versionado
-│   ├── immich/               # Futuro
-│   ├── booklore/             # Futuro
-│   └── authelia/             # Futuro (8GB)
+├── README.md              # Documentação principal
+├── CLAUDE.md              # Este arquivo (contexto)
+│
 ├── scripts/
-│   ├── backup-opencloud.sh   # Futuro
-│   └── update-all.sh         # Futuro
-└── docs/
-    ├── SETUP.md
-    ├── AUTHELIA_FUTURE.md    # Referência para depois
-    └── BACKUP_STRATEGY.md    # Futuro
+│   ├── setup-server.sh    # Setup inicial completo
+│   ├── setup-caddy.sh     # Configurar Caddy (backup + symlink)
+│   ├── cleanup-docker.sh  # Remover containers/volumes
+│   └── deploy-stack.sh    # Deploy de stack específico
+│
+├── caddy/
+│   └── Caddyfile          # Symlinked para /etc/caddy/Caddyfile
+│
+└── stacks/
+    ├── shared/
+    │   └── postgres/
+    │       ├── docker-compose.yml
+    │       ├── .env.example
+    │       └── init-scripts/
+    │           └── create-databases.sql
+    │
+    ├── plausible/
+    │   ├── docker-compose.yml
+    │   ├── .env.example
+    │   └── clickhouse/         # Configs do ClickHouse
+    │
+    └── homepage/
+        ├── docker-compose.yml
+        └── config/              # YAMLs de configuração
 ```
-
-### Passos para Instalação
-
-**Ordem de Execução**:
-
-1. **Criar estrutura Git**
-   ```bash
-   cd ~
-   mkdir infra-servidor && cd infra-servidor
-   git init
-   mkdir -p stacks/opencloud scripts docs
-   ```
-
-2. **Criar .gitignore**
-   ```gitignore
-   # Secrets
-   .env
-   *.env.local
-   secrets/
-   
-   # Dados
-   */data/
-   */books/
-   */uploads/
-   
-   # Logs
-   *.log
-   
-   # Backups
-   backups/
-   ```
-
-3. **Instalar Caddy no host**
-   ```bash
-   sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-   sudo apt update
-   sudo apt install caddy
-   ```
-
-4. **Criar docker-compose.yml do OpenCloud**
-   - Localização: `stacks/opencloud/docker-compose.yml`
-   - Porta: 127.0.0.1:9200 (apenas localhost)
-   - Limite de RAM: 300M
-   - Healthcheck configurado
-
-5. **Criar .env e .env.example**
-   - `.env.example`: versionado, valores placeholder
-   - `.env`: não versionado, valores reais
-
-6. **Configurar Caddy**
-   - Backup do Caddyfile original
-   - Criar novo Caddyfile em `/etc/caddy/Caddyfile`
-   - Configurar reverse proxy para OpenCloud
-   - Headers de segurança
-   - Logs em `/var/log/caddy/`
-
-7. **Subir OpenCloud**
-   ```bash
-   cd ~/infra-servidor/stacks/opencloud
-   docker compose up -d
-   docker compose logs -f
-   ```
-
-8. **Verificar funcionamento**
-   - `curl -I http://localhost:9200`
-   - Acessar via browser (substituir domínio)
-   - Criar conta admin
-
-9. **Commit inicial**
-   ```bash
-   git add .gitignore stacks/opencloud/*.{yml,example} README.md docs/
-   git commit -m "feat: setup inicial com OpenCloud"
-   ```
-
-### Variáveis de Ambiente Necessárias
-
-```env
-# stacks/opencloud/.env
-OCIS_DOMAIN=cloud.seudominio.com  # SUBSTITUIR
-OCIS_ADMIN_PASSWORD=              # GERAR SENHA FORTE
-TZ=Europe/Rome
-```
-
-### Verificações Pós-Instalação
-
-- [ ] Container OpenCloud está healthy: `docker compose ps`
-- [ ] Porta 9200 respondendo: `curl http://localhost:9200`
-- [ ] Caddy está rodando: `sudo systemctl status caddy`
-- [ ] HTTPS funcionando: `curl -I https://cloud.seudominio.com`
-- [ ] Logs sem erros: `docker compose logs opencloud`
-- [ ] Consegue criar conta admin via web
-
----
-
-## 📋 Backlog Estruturado
-
-### FASE 1: Fundação (Atual - 4GB RAM)
-
-#### 1.1 OpenCloud Básico [EM ANDAMENTO]
-- [ ] Criar estrutura Git
-- [ ] Instalar Caddy no host
-- [ ] Configurar OpenCloud
-- [ ] Primeiro commit
-- [ ] Documentar no README.md
-- [ ] Testar upload/download de arquivos
-
-#### 1.2 Documentação Inicial
-- [ ] README.md principal com overview
-- [ ] docs/SETUP.md com instruções detalhadas
-- [ ] docs/TROUBLESHOOTING.md com problemas comuns
-- [ ] Documentar comandos úteis
-
-#### 1.3 Backup OpenCloud (Simples)
-- [ ] Script `scripts/backup-opencloud.sh`
-- [ ] Cron job para backup diário
-- [ ] Testar restauração (CRÍTICO)
-- [ ] Upload para Hetzner Storage Box via rclone
-- [ ] Documentar em docs/BACKUP_STRATEGY.md
-
-#### 1.4 Segurança Básica
-- [ ] Configurar UFW (firewall)
-- [ ] Instalar e configurar Fail2ban
-- [ ] SSH: desabilitar password auth
-- [ ] SSH: apenas chave pública
-- [ ] Verificar permissões em .env files (600)
-
----
-
-### FASE 2: Expansão (4GB RAM)
-
-#### 2.1 Preparar para Reset
-- [ ] Backup completo do Zeroslides
-- [ ] Backup do Portainer (exportar configs)
-- [ ] Listar todas as portas em uso
-- [ ] Documentar todos os serviços atuais
-- [ ] Criar checklist de reinstalação
-
-#### 2.2 Reset e Clean Install
-- [ ] Fazer snapshot Scaleway (ANTES DE TUDO)
-- [ ] Reset do servidor
-- [ ] Instalar Ubuntu 20.04 fresh
-- [ ] Configurar SSH keys
-- [ ] Instalar Docker + Docker Compose
-- [ ] Instalar Caddy
-- [ ] Clonar repositório infra-servidor
-
-#### 2.3 Migrar Zeroslides para Estrutura Git
-- [ ] Criar `stacks/zeroslides/`
-- [ ] Adaptar GitHub Actions para nova estrutura
-- [ ] Mover de `~/apps/` para `~/infra-servidor/stacks/`
-- [ ] Testar deploy via Actions
-- [ ] Atualizar documentação
-
-#### 2.4 Adicionar Jekyll (Blog Estático)
-- [ ] Configurar build do Jekyll
-- [ ] Servir via Caddy (arquivos estáticos)
-- [ ] Configurar em `blog.seudominio.com`
-- [ ] Script de deploy/rebuild
-- [ ] Backup (simples rsync do _site/)
-
-#### 2.5 Adicionar Immich (Fotos)
-- [ ] Criar `stacks/immich/docker-compose.yml`
-- [ ] Configurar PostgreSQL
-- [ ] Configurar Redis
-- [ ] Configurar machine learning (opcional)
-- [ ] Limitar RAM (600MB total)
-- [ ] Configurar backup (PostgreSQL dump + uploads/)
-- [ ] Integrar com Caddy
-- [ ] Testar upload de fotos
-
-#### 2.6 Adicionar Booklore (Ebooks)
-- [ ] Criar `stacks/booklore/docker-compose.yml`
-- [ ] Configurar MariaDB
-- [ ] Limitar RAM (400MB total)
-- [ ] Configurar backup (DB + books/)
-- [ ] Integrar com Caddy
-- [ ] Testar import de ebooks
-- [ ] Configurar OPDS para leitores
-
----
-
-### FASE 3: Upgrade e Segurança Avançada (8GB RAM)
-
-#### 3.1 Upgrade do Servidor
-- [ ] Fazer backup completo
-- [ ] Fazer snapshot Scaleway
-- [ ] Upgrade RAM: 4GB → 8GB (via console Scaleway)
-- [ ] Reiniciar e verificar RAM: `free -h`
-- [ ] Monitorar consumo por 24h
-
-#### 3.2 Implementar Authelia + Yubikey
-- [ ] Criar `stacks/authelia/docker-compose.yml`
-- [ ] Configurar Redis
-- [ ] Criar `configuration.yml`
-- [ ] Criar `users_database.yml` (você + Ewok)
-- [ ] Gerar secrets (jwt, session, encryption)
-- [ ] Integrar com Caddy (forward_auth)
-- [ ] Testar login com senha
-- [ ] Registrar Yubikey principal
-- [ ] Registrar Yubikey backup
-- [ ] Configurar TOTP como fallback
-- [ ] Testar SSO entre serviços
-- [ ] Documentar em docs/AUTHELIA_SETUP.md
-
-#### 3.3 Proteger Todos os Serviços
-- [ ] OpenCloud: forward_auth Authelia
-- [ ] Immich: forward_auth Authelia
-- [ ] Booklore: forward_auth Authelia
-- [ ] Zeroslides: forward_auth Authelia (opcional)
-- [ ] Portainer: remover (não precisa mais)
-- [ ] Testar Yubikey em cada serviço
-
-#### 3.4 Monitoramento
-- [ ] Instalar Uptime Kuma (opcional)
-- [ ] Healthchecks para cada serviço
-- [ ] Alertas via Telegram/Email
-- [ ] Dashboard de recursos (Grafana? ou só htop)
-
----
-
-### FASE 4: Refinamento (Contínuo)
-
-#### 4.1 Automação de Backups
-- [ ] Script unificado `scripts/backup-all.sh`
-- [ ] Backup diário: Hetzner Storage Box
-- [ ] Backup semanal: Scaleway Snapshots
-- [ ] Backup mensal: Blu-ray BD-R (50GB)
-- [ ] Testar restauração de cada serviço
-- [ ] Documentar procedimento de disaster recovery
-
-#### 4.2 CI/CD Avançado
-- [ ] GitHub Actions: deploy de toda a stack
-- [ ] GitHub Actions: rodar testes de saúde
-- [ ] GitHub Actions: backup antes de deploy
-- [ ] Deploy com rollback automático em caso de falha
-
-#### 4.3 Melhorias de Performance
-- [ ] PostgreSQL compartilhado para apps Elixir
-- [ ] Tuning do Caddy (cache, gzip)
-- [ ] Configurar swap se necessário
-- [ ] Monitorar e otimizar consumo de RAM
-
-#### 4.4 Documentação Final
-- [ ] Runbook completo de operação
-- [ ] Troubleshooting guide expandido
-- [ ] Diagrama de arquitetura (mermaid?)
-- [ ] Vídeo walkthrough (opcional)
 
 ---
 
 ## 🔧 Informações Técnicas
 
 ### Portas Utilizadas
-- 22: SSH
-- 80: HTTP (Caddy → redireciona 443)
-- 443: HTTPS (Caddy)
-- 9200: OpenCloud (localhost only)
-- 9091: Authelia (futuro, localhost only)
-- 2283: Immich (futuro, localhost only)
-- 41935: Booklore (futuro, localhost only)
-- 4000: Zeroslides (localhost only)
 
-### Domínios Necessários
-Criar registros DNS tipo A:
-- `cloud.seudominio.com → 51.15.177.139`
-- `auth.seudominio.com → 51.15.177.139` (futuro)
-- `photos.seudominio.com → 51.15.177.139` (futuro)
-- `books.seudominio.com → 51.15.177.139` (futuro)
-- `blog.seudominio.com → 51.15.177.139` (futuro)
-- `slides.seudominio.com → 51.15.177.139`
+| Serviço | Porta | Bind | Acesso |
+|---------|-------|------|--------|
+| SSH | 22 | 0.0.0.0 | Externo |
+| HTTP | 80 | 0.0.0.0 | Caddy (redirect) |
+| HTTPS | 443 | 0.0.0.0 | Caddy |
+| Postgres | 5432 | 127.0.0.1 | Interno |
+| Plausible | 8000 | 127.0.0.1 | Caddy proxy |
+| Homepage | 3000 | 127.0.0.1 | Caddy proxy |
+| Zeroslides | 4000 | 127.0.0.1 | Caddy proxy |
 
-### Usuários
-- **Usuário principal**: Usuário atual do sistema (para tudo)
-- **Usuário Docker**: Mesmo usuário (no grupo docker)
-- **Usuário dedicado**: NÃO criar (decisão: usar usuário atual)
+### Domínios
 
-### Hardware Limits
-**Configuração Atual (4GB)**:
-- Sistema: 800MB
-- OpenCloud: 200-300MB
-- Zeroslides: 300-400MB
-- Buffer: ~3GB
+Criar registros DNS tipo A apontando para `51.15.177.139`:
+- `slides.seudominio.com` → Zeroslides
+- `seudominio.com` → Site estático
+- `analytics.seudominio.com` → Plausible
+- `dash.seudominio.com` → Homepage
 
-**Configuração Futura (8GB)**:
-- Sistema: 800MB
-- Caddy: 50MB
-- Authelia: 80MB
-- OpenCloud: 200MB
-- Immich: 800MB
-- Booklore: 400MB
-- Zeroslides: 300MB
-- Outras apps Elixir: 200-400MB cada
-- Buffer: ~5GB
+### Consumo de RAM (estimado)
+
+| Serviço | Limite | Uso Real |
+|---------|--------|----------|
+| Sistema | - | ~800MB |
+| Caddy | - | ~50MB |
+| Postgres | 512M | ~200MB |
+| Plausible | 512M | ~300MB |
+| ClickHouse | 512M | ~300MB |
+| Homepage | 256M | ~100MB |
+| Zeroslides | - | ~300MB |
+| **Total** | - | ~2GB |
+| **Buffer** | - | ~2GB |
+
+---
+
+## 🚀 Workflow de Deploy
+
+### 1. Desenvolvimento Local
+
+```bash
+# Editar arquivos localmente
+vim stacks/plausible/docker-compose.yml
+
+# Commitar
+git add .
+git commit -m "feat: adicionar novo stack"
+git push origin main
+```
+
+### 2. Deploy no Servidor
+
+```bash
+# No servidor
+cd ~/infra-servidor
+git pull origin main
+
+# Se mudou Caddyfile
+./scripts/setup-caddy.sh
+
+# Se mudou algum stack
+./scripts/deploy-stack.sh plausible
+```
 
 ---
 
 ## 🎓 Contexto Pessoal
 
 ### Tecnologias Familiares
-- Elixir/Phoenix (linguagem principal)
-- GitHub Actions (já usa para Zeroslides)
-- Docker básico (via Portainer)
+- Elixir/Phoenix
+- Docker básico
 - Linux/Ubuntu
+- Git
 
 ### Tecnologias Novas
-- Caddy (novo)
-- Infrastructure as Code via Git (novo approach)
-- Authelia/WebAuthn (futuro)
+- Caddy (aprendendo)
+- Infrastructure as Code (novo approach)
+- Plausible
 
-### Preferências
-- ⚠️ Não usar elogios excessivos ("great job!", "excellent!")
+### Preferências de Comunicação
+- ⚠️ Não usar elogios excessivos
 - ✅ Direto ao ponto
 - ✅ Explicar *por que*, não só *como*
-- ✅ Trade-offs explícitos quando há escolhas
+- ✅ Trade-offs explícitos
 
 ### Casos de Uso
-- **OpenCloud**: Sync de arquivos pessoais (você + Ewok)
-- **Immich**: Backup de fotos do celular
-- **Booklore**: Biblioteca de ebooks (vegano, filosofia, Scrum)
-- **Zeroslides**: Aplicação de apresentações (trabalho)
-- **Jekyll**: Blog pessoal
+- **Zeroslides**: Trabalho (apresentações)
+- **Site**: Blog pessoal
+- **Plausible**: Analytics dos sites
+- **Homepage**: Monitoramento
 
 ---
 
 ## 🚨 Alertas e Cuidados
 
-### Antes de Executar Comandos
-- ⚠️ Sempre fazer backup antes de mudanças grandes
-- ⚠️ Testar em dry-run quando possível
-- ⚠️ Verificar se há serviços rodando na porta antes de subir novos
+### Dados Críticos
+- ❌ NUNCA commitar `.env` files
+- ❌ NUNCA commitar `secrets/`
+- ✅ SEMPRE usar `.env.example` com placeholders
+- ✅ SEMPRE verificar `.gitignore` antes de commit
 
-### Dados Sensíveis
-- ❌ NUNCA commitar arquivos .env
-- ❌ NUNCA commitar secrets/
-- ✅ SEMPRE usar .env.example com placeholders
-- ✅ SEMPRE verificar .gitignore antes de commit
+### Volumes Docker Críticos
+- `shared-postgres-data` → Todos os bancos
+- `plausible-event-data` → Eventos do analytics
+- `stacks/homepage/config/` → Configuração do dashboard
 
-### Backup Critical
-- 📁 OpenCloud: `/home/usuario/infra-servidor/stacks/opencloud/data/`
-- 📁 Immich: `/home/usuario/infra-servidor/stacks/immich/{uploads,database}/`
-- 📁 Booklore: `/home/usuario/infra-servidor/stacks/booklore/{books,data,mariadb}/`
+### Antes de Mudanças Grandes
+1. Fazer snapshot Scaleway
+2. Testar em dry-run quando possível
+3. Verificar portas disponíveis
+
+---
+
+## 🛠️ Troubleshooting
+
+### Postgres não conecta
+```bash
+# Verificar se está rodando
+docker ps | grep postgres
+
+# Ver logs
+docker logs shared-postgres
+
+# Testar conexão
+docker exec shared-postgres pg_isready -U postgres
+```
+
+### Plausible não inicia
+```bash
+# Ver logs
+cd stacks/plausible
+docker compose logs -f
+
+# Verificar se Postgres está healthy
+docker ps
+```
+
+### Caddy não recarrega
+```bash
+# Verificar sintaxe
+sudo caddy validate --config /etc/caddy/Caddyfile
+
+# Ver logs
+sudo journalctl -u caddy -f
+
+# Reiniciar (último recurso)
+sudo systemctl restart caddy
+```
+
+### Site não carrega (502)
+```bash
+# Verificar se serviço backend está rodando
+curl http://localhost:8000  # Plausible
+curl http://localhost:3000  # Homepage
+
+# Verificar Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+```
 
 ---
 
 ## 📚 Referências
 
 ### Documentação Oficial
-- OpenCloud: https://opencloud.eu/
-- Authelia: https://www.authelia.com/
-- Caddy: https://caddyserver.com/docs/
-- Immich: https://immich.app/docs/
-- Booklore: https://github.com/booklore-app/booklore
+- [Plausible Community Edition](https://github.com/plausible/community-edition)
+- [Homepage](https://gethomepage.dev)
+- [Caddy](https://caddyserver.com/docs/)
+- [PostgreSQL](https://www.postgresql.org/docs/)
 
 ### Repositório
-- GitHub: (a ser criado)
 - Branch principal: `main`
+- Commits: Conventional Commits (feat:, fix:, docs:, etc.)
 
 ---
 
-## 🤝 Como Ajudar
+## 🤝 Como Claude Code Pode Ajudar
 
-### Claude Code, você pode:
-
-1. **Criar arquivos**: docker-compose.yml, scripts, configs
+### Você pode:
+1. **Criar/editar arquivos**: docker-compose.yml, scripts, configs
 2. **Revisar segurança**: Verificar se secrets estão protegidos
-3. **Sugerir melhorias**: Performance, organização, melhores práticas
-4. **Gerar documentação**: READMEs, troubleshooting guides
-5. **Criar checklists**: Para cada fase do backlog
-6. **Debugging**: Ajudar a interpretar logs de erro
+3. **Sugerir melhorias**: Performance, organização
+4. **Gerar documentação**: READMEs, troubleshooting
+5. **Debugging**: Ajudar a interpretar logs
 
-### O que você NÃO precisa fazer:
-
+### Não precisa:
 - Elogiar o trabalho (só se realmente notável)
 - Repetir informações já no contexto
-- Sugerir soluções que não cabem no hardware (4GB agora, 8GB depois)
-- Over-engineer (KISS principle)
+- Over-engineer (KISS)
 
 ---
 
-## 🎯 Próximos Passos Imediatos
+## 📋 Backlog
 
-1. Revisar este documento
-2. Criar estrutura Git inicial
-3. Instalar e configurar Caddy
-4. Criar docker-compose.yml do OpenCloud
-5. Subir OpenCloud
-6. Testar funcionamento
-7. Primeiro commit no Git
-8. Criar README.md
+### Prioridade Alta
+- [ ] Testar deploy completo no servidor
+- [ ] Criar primeiro site no Plausible
+- [ ] Ajustar configs do Homepage (domínios reais)
 
-**Foco**: Fazer OpenCloud funcionar PRIMEIRO. Depois pensamos no resto.
+### Prioridade Média
+- [ ] Script de backup automatizado (cron)
+- [ ] Documentar procedimento de restore
+- [ ] Adicionar mais serviços ao Homepage
+
+### Prioridade Baixa
+- [ ] Monitoramento de uptime externo
+- [ ] Alertas via webhook/Telegram
+- [ ] Dashboard Grafana (só se necessário)
 
 ---
 
-**Última atualização**: 2026-01-09  
-**Status**: Fase 1.1 em andamento (OpenCloud)
+## 🎯 Próximos Passos
+
+1. ✅ Criar estrutura de scripts
+2. ✅ Configurar Postgres compartilhado
+3. ✅ Configurar Plausible
+4. ✅ Configurar Homepage
+5. ⏳ Testar no servidor
+6. ⏳ Ajustar domínios reais
+7. ⏳ Primeiro backup manual
+
+**Status**: Estrutura criada, aguardando deploy no servidor

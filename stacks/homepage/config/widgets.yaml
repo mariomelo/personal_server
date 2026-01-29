@@ -1,0 +1,12 @@
+---
+# Widgets do servidor
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+    uptime: true
+
+- search:
+    provider: custom
+    url: https://duckduckgo.com/?q=
+    target: _blank

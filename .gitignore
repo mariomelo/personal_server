@@ -3,15 +3,19 @@
 *.env.local
 secrets/
 
-# Dados
+# Dados (volumes Docker)
 */data/
-*/opencloud-data/
-*/opencloud-config/
-*/books/
-*/uploads/
+*/config/
+*_data/
+postgres_data/
+event-data/
+event-logs/
 
 # Logs
 *.log
 
 # Backups
 backups/
+
+# Configs específicos do Homepage
+stacks/homepage/config/*.env

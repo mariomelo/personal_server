@@ -1,0 +1,40 @@
+# Caddyfile - Servidor Melomario
+# Este arquivo será symlinked para /etc/caddy/Caddyfile
+
+# IMPORTANTE: Ajuste os domínios abaixo com seus domínios reais
+
+# Homepage (Dashboard)
+dash.seudominio.com {
+    reverse_proxy localhost:3000
+
+    # Headers de segurança
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# Plausible Analytics
+analytics.seudominio.com {
+    reverse_proxy localhost:8000
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# Zeroslides (Elixir) - EXEMPLO - ajuste conforme sua config atual
+# slides.seudominio.com {
+#     reverse_proxy localhost:4000
+# }
+
+# Site Estático - EXEMPLO - ajuste conforme sua config atual
+# seudominio.com {
+#     root * /caminho/para/site/estatico
+#     file_server
+# }
