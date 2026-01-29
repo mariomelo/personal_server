@@ -3,6 +3,10 @@
 *.env.local
 secrets/
 
+# Init scripts com senhas reais
+**/init-scripts/*.sql
+!**/init-scripts/*.sql.example
+
 # Dados (volumes Docker)
 */data/
 */config/
