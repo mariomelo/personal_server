@@ -1,6 +1,10 @@
 ---
 title: Servidor Melomario
-background: https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920
+background:
+  image: https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920
+  blur: sm
+  saturate: 50
+  brightness: 50
 theme: dark
 color: slate
 

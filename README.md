@@ -15,14 +15,31 @@ Repositório de configuração do servidor self-hosted com abordagem Infrastruct
 
 ## 📦 Serviços
 
-### Rodando
-- **Zeroslides** (Elixir): Aplicação de apresentações via systemd
-- **Site Estático**: Servido diretamente pelo Caddy
+### Aplicações (Fora do Docker)
+- **Zeroslides** (Elixir/Phoenix)
+  - Apresentações interativas
+  - Domínio: `zeroslides.melomario.com`
+  - Systemd service
+
+- **Site Pessoal** (Jekyll)
+  - Blog estático
+  - Domínio: `mariomelo.com`
+  - Servido diretamente pelo Caddy
 
 ### Docker Stacks
-- **Postgres Compartilhado**: Banco de dados para múltiplos serviços
-- **Plausible Analytics**: Web analytics open-source
-- **Homepage**: Dashboard com status e métricas do servidor
+- **Postgres Compartilhado**
+  - Banco de dados para múltiplos serviços
+  - Limite RAM: 512MB
+
+- **Plausible Analytics**
+  - Web analytics open-source
+  - Domínio: `analytics.mariomelo.com`
+  - Plausible (512MB) + ClickHouse (512MB)
+
+- **Homepage Dashboard**
+  - Monitoramento e status dos serviços
+  - Domínio: `dash.mariomelo.com`
+  - Limite RAM: 256MB
 
 ## 🚀 Setup Inicial
 
@@ -34,8 +51,8 @@ git clone <seu-repo> ~/infra-servidor
 cd ~/infra-servidor
 
 # Setup inicial (Docker, Caddy, firewall)
-chmod +x scripts/*.sh
-./scripts/setup-server.sh
+chmod +x scripts/**/*.sh
+./scripts/setup/setup-server.sh
 
 # Se instalou Docker agora, fazer logout/login para aplicar grupo
 ```
@@ -62,7 +79,7 @@ openssl rand -base64 32 | tr -d '\n'  # TOTP_VAULT_KEY
 vim caddy/Caddyfile
 
 # Aplicar configuração
-./scripts/setup-caddy.sh
+./scripts/setup/setup-caddy.sh
 ```
 
 ### 4. Subir serviços
@@ -85,17 +102,25 @@ docker compose up -d
 
 ### 5. Primeiro acesso
 
-- **Plausible**: https://analytics.seudominio.com - Criar conta admin
-- **Homepage**: https://dash.seudominio.com - Já funcionando
+- **Homepage**: https://dash.mariomelo.com
+- **Plausible**: https://analytics.mariomelo.com (criar conta admin no primeiro acesso)
+- **Site**: https://mariomelo.com
+- **Zeroslides**: https://zeroslides.melomario.com
 
 ## 🔧 Scripts Úteis
 
 ```bash
-# Limpar todos containers Docker
-./scripts/cleanup-docker.sh
-
 # Deploy de um stack específico
-./scripts/deploy-stack.sh plausible
+./scripts/deploy/deploy-stack.sh plausible
+
+# Resetar Postgres (⚠️ deleta dados!)
+./scripts/reset/reset-postgres.sh
+
+# Resetar Plausible (⚠️ deleta eventos!)
+./scripts/reset/reset-plausible.sh
+
+# Limpar todos containers Docker
+./scripts/reset/cleanup-docker.sh
 
 # Recarregar Caddy
 sudo systemctl reload caddy
@@ -104,12 +129,18 @@ sudo systemctl reload caddy
 sudo journalctl -u caddy -f
 ```
 
+Ver documentação completa dos scripts em: [`scripts/README.md`](scripts/README.md)
+
 ## 📊 Estrutura
 
 ```
 ~/infra-servidor/
-├── scripts/           # Scripts de setup e deploy
-├── stacks/            # Docker Compose de cada serviço
+├── scripts/
+│   ├── setup/         # Configuração inicial
+│   ├── deploy/        # Deploy de stacks
+│   ├── reset/         # Limpeza/reset
+│   └── README.md      # Documentação dos scripts
+├── stacks/
 │   ├── shared/        # Serviços compartilhados (Postgres)
 │   ├── plausible/     # Analytics
 │   └── homepage/      # Dashboard
@@ -147,9 +178,26 @@ docker volume inspect plausible-event-data
 - [Homepage Docs](https://gethomepage.dev)
 - [Caddy Docs](https://caddyserver.com/docs/)
 
-## 📌 TODO
+## 📌 Próximos Passos
 
+### Prioridade Alta
+- [ ] Testar reinicialização completa do servidor
+- [ ] Criar primeiro site no Plausible
+- [ ] Verificar consumo de RAM após alguns dias
+
+### Prioridade Média
 - [ ] Script de backup automatizado
 - [ ] Cron job para backups diários
-- [ ] Monitoramento de uptime
-- [ ] Alertas via webhook
+- [ ] Documentar procedimento de restore completo
+
+### Prioridade Baixa
+- [ ] Monitoramento de uptime externo
+- [ ] Alertas via webhook/Telegram
+
+## 🎓 Lições Aprendidas
+
+- ✅ Healthchecks são essenciais para ordem de inicialização
+- ✅ Rede compartilhada facilita comunicação entre containers
+- ✅ Scripts organizados em subpastas melhoram manutenibilidade
+- ✅ Senhas em `.env`, nunca em arquivos versionados
+- ✅ `version` obsoleto no docker-compose (Docker Compose v2)
