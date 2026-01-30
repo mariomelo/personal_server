@@ -439,18 +439,24 @@ Configurados no Caddyfile para cada domínio:
 
 ## 📋 Lições Aprendidas
 
-### Docker Compose v2
+### Docker Compose - Boas Práticas
+- **SEMPRE verificar a versão mais recente** no GitHub oficial do projeto antes de implementar
+- **NUNCA alterar o docker-compose.yml oficial** - usar `docker-compose.override.yml` para customizações
 - Remover `version: '3.8'` (obsoleto e causa warnings)
 - Usar sintaxe moderna sem declarar versão
 
 ### Healthchecks e Dependências
 - `depends_on` básico NÃO espera serviço estar pronto
 - Usar `condition: service_healthy` + healthcheck
-- `start_period` importante para serviços lentos (ClickHouse)
+- `start_period` importante para serviços lentos (ClickHouse precisa 120s)
+- Verificar requisitos mínimos de RAM no README oficial (ex: ClickHouse precisa 2GB)
 
 ### Redes Docker
-- Usar rede compartilhada (`shared-network`) entre stacks
-- Facilita comunicação sem expor portas
+- Quando um serviço precisa falar com containers em diferentes docker-compose:
+  - DEVE estar explicitamente em múltiplas redes: `[default, shared-network]`
+  - Exemplo: Plausible precisa falar com ClickHouse (default) E Postgres externo (shared-network)
+- Sempre nomear a rede `default` explicitamente para evitar nomes auto-gerados
+- Verificar issues no GitHub se houver problemas de conectividade (ex: issue #247)
 
 ### Organização de Scripts
 - Subpastas por categoria: setup/, deploy/, reset/
@@ -466,6 +472,13 @@ Configurados no Caddyfile para cada domínio:
 - Requer `HOMEPAGE_ALLOWED_HOSTS` para domínios externos
 - Background: preferir imagens escuras para tema dark
 - PUID/PGID pode precisar ajuste (verificar com `id`)
+
+### Debugging de Stacks Complexos
+1. Sempre testar primeiro com setup padrão (sem customizações)
+2. Se funcionar, adicionar customizações incrementalmente
+3. Consultar issues do GitHub quando encontrar problemas
+4. Verificar logs de TODOS os containers, não só do principal
+5. Conferir requisitos de hardware (RAM, CPU) no README oficial
 
 ---
 

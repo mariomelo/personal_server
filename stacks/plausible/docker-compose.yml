@@ -1,41 +1,29 @@
+# Plausible Community Edition v3.2.0
+# Setup padrão com Postgres próprio (não compartilhado)
+
 services:
-  plausible:
-    image: ghcr.io/plausible/community-edition:v3.2.0
-    container_name: plausible
+  plausible_db:
+    image: postgres:16-alpine
+    container_name: plausible_db
     restart: unless-stopped
-    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
-    depends_on:
-      plausible_events_db:
-        condition: service_healthy
-    networks:
-      - default
-      - shared-network
-    ports:
-      - "127.0.0.1:8000:8000"
+    volumes:
+      - db-data:/var/lib/postgresql/data
     environment:
-      BASE_URL: ${BASE_URL}
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      TOTP_VAULT_KEY: ${TOTP_VAULT_KEY}
-
-      # Postgres (shared)
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
-
-      # ClickHouse (local para eventos)
-      CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db
-
-      # Disable registration
-      DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-true}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 512M
 
   plausible_events_db:
     image: clickhouse/clickhouse-server:24.11.1.2557-alpine
     container_name: plausible_events_db
     restart: unless-stopped
-    networks:
-      - default
     volumes:
       - event-data:/var/lib/clickhouse
       - event-logs:/var/log/clickhouse-server
@@ -57,16 +45,40 @@ services:
         limits:
           memory: 2G
 
+  plausible:
+    image: ghcr.io/plausible/community-edition:v3.2.0
+    container_name: plausible
+    restart: unless-stopped
+    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    depends_on:
+      plausible_db:
+        condition: service_healthy
+      plausible_events_db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      BASE_URL: ${BASE_URL}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      TOTP_VAULT_KEY: ${TOTP_VAULT_KEY}
+
+      # Postgres local (não compartilhado)
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@plausible_db:5432/plausible_db
+
+      # ClickHouse
+      CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db
+
+      # Disable registration
+      DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-true}
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
 volumes:
+  db-data:
+    name: plausible-db-data
   event-data:
     name: plausible-event-data
   event-logs:
     name: plausible-event-logs
-
-networks:
-  default:
-    name: plausible-network
-    driver: bridge
-  shared-network:
-    external: true
-    name: shared-network
