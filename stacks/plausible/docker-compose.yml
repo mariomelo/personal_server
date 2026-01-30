@@ -34,6 +34,8 @@ services:
     image: clickhouse/clickhouse-server:24.11.1.2557-alpine
     container_name: plausible_events_db
     restart: unless-stopped
+    networks:
+      - default
     volumes:
       - event-data:/var/lib/clickhouse
       - event-logs:/var/log/clickhouse-server
@@ -62,6 +64,9 @@ volumes:
     name: plausible-event-logs
 
 networks:
+  default:
+    name: plausible-network
+    driver: bridge
   shared-network:
     external: true
     name: shared-network
