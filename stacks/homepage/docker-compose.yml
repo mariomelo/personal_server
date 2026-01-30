@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
@@ -13,6 +11,8 @@ services:
     environment:
       PUID: 1000
       PGID: 1000
+      # Permitir acesso via domínio
+      HOMEPAGE_ALLOWED_HOSTS: "dash.mariomelo.com,localhost,127.0.0.1"
     deploy:
       resources:
         limits:

@@ -1,40 +1,68 @@
+mariomelo.com {
+	# Diretório raiz onde o Jekyll gera os arquivos
+	root * /home/deploy/site
+	# Encoding (compressão)
+	encode gzip zstd
+	# Headers de segurança
+	header {
+		# Previne clickjacking
+		X-Frame-Options "SAMEORIGIN"
+		# Previne MIME sniffing
+		X-Content-Type-Options "nosniff"
+		# XSS Protection
+		X-XSS-Protection "1; mode=block"
+		# Referrer policy
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+	# Cache para assets estáticos
+	@static {
+		path *.css *.js *.jpg *.jpeg *.png *.gif *.svg *.ico *.woff *.woff2 *.ttf *.eot
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
+	# Cache menor para HTML
+	@html {
+		path *.html
+	}
+	header @html Cache-Control "public, max-age=3600"
+	# Try files (suporte para URLs limpas do Jekyll)
+	try_files {path} {path}.html {path}/ /404.html
+	# Serve os arquivos
+	file_server
+	# Log (opcional)
+	log {
+		output file /var/log/caddy/mariomelo.com.log
+	}
+}
+www.mariomelo.com, blog.mariomelo.com, melomario.com, www.melomario.com, blog.melomario.com {
+	redir /p/* https://mariomelo.com/{path.1} permanent
+	redir / https://mariomelo.com permanent
+	redir /* https://mariomelo.com{path} permanent
+}
+# Zeroslides - Elixir puro, sem docker
+zeroslides.melomario.com {
+	reverse_proxy localhost:4000
+}
 # Caddyfile - Servidor Melomario
 # Este arquivo será symlinked para /etc/caddy/Caddyfile
-
 # IMPORTANTE: Ajuste os domínios abaixo com seus domínios reais
-
 # Homepage (Dashboard)
-dash.seudominio.com {
-    reverse_proxy localhost:3000
-
-    # Headers de segurança
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
+dash.mariomelo.com {
+	reverse_proxy localhost:3000
+	# Headers de segurança
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 }
-
 # Plausible Analytics
-analytics.seudominio.com {
-    reverse_proxy localhost:8000
-
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
+analytics.mariomelo.com {
+	reverse_proxy localhost:8000
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 }
-
-# Zeroslides (Elixir) - EXEMPLO - ajuste conforme sua config atual
-# slides.seudominio.com {
-#     reverse_proxy localhost:4000
-# }
-
-# Site Estático - EXEMPLO - ajuste conforme sua config atual
-# seudominio.com {
-#     root * /caminho/para/site/estatico
-#     file_server
-# }
