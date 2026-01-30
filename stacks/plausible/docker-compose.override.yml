@@ -1,0 +1,26 @@
+# Override para usar Postgres compartilhado em vez do Postgres próprio
+# Este arquivo sobrescreve configurações do docker-compose.yml
+
+services:
+  # Desabilitar o Postgres local
+  plausible_db:
+    deploy:
+      replicas: 0
+
+  # Modificar Plausible para usar Postgres compartilhado
+  plausible:
+    networks:
+      - default
+      - shared-network
+    environment:
+      # Sobrescrever DATABASE_URL para usar Postgres compartilhado
+      DATABASE_URL: postgresql://${SHARED_DB_USER}:${SHARED_DB_PASSWORD}@shared-postgres:5432/${SHARED_DB_NAME}
+    depends_on:
+      # Remover dependência do plausible_db local
+      plausible_events_db:
+        condition: service_healthy
+
+networks:
+  shared-network:
+    external: true
+    name: shared-network
