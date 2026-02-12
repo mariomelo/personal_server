@@ -43,7 +43,7 @@ zeroslides.melomario.com {
 	reverse_proxy localhost:4000
 }
 
-www.ligialage.com, ligialage.com {
+ligia.mariomelo.com {
 	# Diretório raiz onde o Jekyll gera os arquivos
 	root * /home/ligialage/deploy/site
 	# Encoding (compressão)
