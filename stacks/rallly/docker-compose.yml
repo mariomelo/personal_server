@@ -1,0 +1,22 @@
+services:
+  rallly:
+    image: lukevella/rallly:3
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    env_file:
+      - config.env
+    environment:
+      # Sobrescreve DATABASE_URL do config.env apontando para o Postgres compartilhado
+      DATABASE_URL: postgres://rallly_user:${RALLLY_DB_PASSWORD}@shared-postgres/rallly
+    networks:
+      - default
+      - shared-network
+    mem_limit: 256m
+
+networks:
+  default:
+    name: rallly-network
+  shared-network:
+    external: true
+    name: shared-network

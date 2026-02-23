@@ -93,7 +93,7 @@ dash.mariomelo.com {
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 }
-# Cal.com - Agendamentos
+# Rallly - Agendamento em grupo
 cal.mariomelo.com {
 	reverse_proxy localhost:3001
 	header {
