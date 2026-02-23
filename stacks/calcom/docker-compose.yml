@@ -1,0 +1,49 @@
+services:
+  calcom:
+    image: calcom/cal.com:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      DATABASE_URL: postgresql://calcom_user:${CALCOM_DB_PASSWORD}@shared-postgres:5432/calcom
+      DATABASE_DIRECT_URL: postgresql://calcom_user:${CALCOM_DB_PASSWORD}@shared-postgres:5432/calcom
+      NEXTAUTH_URL: ${NEXT_PUBLIC_WEBAPP_URL}/api/auth
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY}
+      NEXT_PUBLIC_WEBAPP_URL: ${NEXT_PUBLIC_WEBAPP_URL}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
+      EMAIL_SERVER_HOST: ${EMAIL_SERVER_HOST}
+      EMAIL_SERVER_PORT: ${EMAIL_SERVER_PORT}
+      EMAIL_SERVER_USER: ${EMAIL_SERVER_USER}
+      EMAIL_SERVER_PASSWORD: ${EMAIL_SERVER_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+      - shared-network
+    mem_limit: 512m
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - calcom-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 128m
+
+volumes:
+  calcom-redis-data:
+    name: calcom-redis-data
+
+networks:
+  default:
+    name: calcom-network
+  shared-network:
+    external: true
+    name: shared-network
