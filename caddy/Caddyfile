@@ -93,16 +93,6 @@ dash.mariomelo.com {
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 }
-# Rallly - Agendamento em grupo
-cal.mariomelo.com {
-	reverse_proxy localhost:3001
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "SAMEORIGIN"
-		Referrer-Policy "strict-origin-when-cross-origin"
-	}
-}
 # Plausible Analytics
 analytics.mariomelo.com {
 	reverse_proxy localhost:8000
