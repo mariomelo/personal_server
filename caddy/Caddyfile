@@ -38,10 +38,17 @@ www.mariomelo.com, blog.mariomelo.com, melomario.com, www.melomario.com, blog.me
 	redir / https://mariomelo.com permanent
 	redir /* https://mariomelo.com{path} permanent
 }
+
 # Zeroslides - Elixir puro, sem docker
-zeroslides.melomario.com {
+zeroslides.melomario.com, zeroslides.mariomelo.com {
 	reverse_proxy localhost:4000
 }
+
+# Syncal - Elixir Puro
+syncal.melomario.com, syncal.mariomelo.com {
+	reverse_proxy localhost:4002
+}
+
 
 ligia.mariomelo.com {
 	# Diretório raiz onde o Jekyll gera os arquivos
