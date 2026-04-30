@@ -50,7 +50,7 @@ syncal.melomario.com, syncal.mariomelo.com {
 }
 
 
-ligia.mariomelo.com {
+www.ligialage.com, ligialage.com, ligia.mariomelo.com {
 	# Diretório raiz onde o Jekyll gera os arquivos
 	root * /home/ligialage/deploy/site
 	# Encoding (compressão)
