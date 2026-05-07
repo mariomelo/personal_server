@@ -110,3 +110,21 @@ analytics.mariomelo.com {
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 }
+
+####### CSD #######
+
+group0.mariomelo.com {
+    reverse_proxy localhost:11000
+}
+
+group1.mariomelo.com {
+    reverse_proxy localhost:11001
+}
+
+group2.mariomelo.com {
+    reverse_proxy localhost:11002
+}
+
+group3.mariomelo.com {
+    reverse_proxy localhost:11003
+}
