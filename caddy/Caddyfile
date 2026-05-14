@@ -111,6 +111,17 @@ analytics.mariomelo.com {
 	}
 }
 
+# WordPress + TutorLMS
+learn.mariomelo.com {
+	reverse_proxy localhost:8080
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
 ####### CSD #######
 
 group0.mariomelo.com {
