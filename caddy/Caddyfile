@@ -139,3 +139,12 @@ group2.mariomelo.com {
 group3.mariomelo.com {
     reverse_proxy localhost:11003
 }
+
+mural.mariomelo.com {
+  handle /callback* {
+      reverse_proxy localhost:9333
+  }
+  handle {
+      respond "MURAL Auth Server" 200
+  }
+}
